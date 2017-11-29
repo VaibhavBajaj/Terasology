@@ -224,7 +224,7 @@ public class StateLoading implements GameState {
     }
 
     @Override
-    public void dispose() {
+    public void dispose(boolean shuttingDown) {
         EngineTime time = (EngineTime) context.get(Time.class);
         time.setPaused(false);
     }
@@ -267,5 +267,10 @@ public class StateLoading implements GameState {
     @Override
     public String getLoggingPhase() {
         return gameManifest.getTitle();
+    }
+
+    @Override
+    public Context getContext() {
+        return context;
     }
 }

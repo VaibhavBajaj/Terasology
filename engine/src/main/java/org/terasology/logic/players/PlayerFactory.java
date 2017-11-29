@@ -1,11 +1,11 @@
 /*
- * Copyright 2013 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      http://www.apache.org/licenses/LICENSE-2.0
+ *  http://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,6 +42,8 @@ import org.terasology.physics.shapes.SphereShapeComponent;
 import org.terasology.rendering.logic.MeshComponent;
 import org.terasology.world.WorldProvider;
 
+import java.util.Optional;
+
 /**
  * Creates new player instances.
  */
@@ -67,11 +69,8 @@ public class PlayerFactory {
 
         EntityBuilder builder = entityManager.newBuilder("engine:player");
 
-        float extraSpace = 0.5f;  // spawn a little bit above the ground
-        float entityHeight = getHeightOf(builder) + extraSpace;
-
         LocationComponent location = controller.getComponent(LocationComponent.class);
-        Vector3f spawnPosition = findSpawnPos(location.getWorldPosition(), entityHeight);
+        Vector3f spawnPosition = findSpawnPositionFromLocationComponent(location);
         location.setWorldPosition(spawnPosition);
         controller.saveComponent(location);
 
@@ -96,6 +95,13 @@ public class PlayerFactory {
         Location.attachChild(player, controller, new Vector3f(), new Quat4f(0, 0, 0, 1));
 
         return player;
+    }
+
+    public Vector3f findSpawnPositionFromLocationComponent(LocationComponent locationComponent) {
+        EntityBuilder builder = entityManager.newBuilder("engine:player");
+        float extraSpace = 0.5f;  // spawn a little bit above the ground
+        float entityHeight = getHeightOf(builder) + extraSpace;
+        return findSpawnPos(locationComponent.getWorldPosition(), entityHeight).get(); // TODO: Handle Optional being empty
     }
 
     private float getHeightOf(ComponentContainer prefab) {
@@ -129,20 +135,20 @@ public class PlayerFactory {
         return 1.0f;
     }
 
-    private Vector3f findSpawnPos(Vector3f targetPos, float entityHeight) {
+    private Optional<Vector3f> findSpawnPos(Vector3f targetPos, float entityHeight) {
         int targetBlockX = TeraMath.floorToInt(targetPos.x);
         int targetBlockY = TeraMath.floorToInt(targetPos.y);
         int targetBlockZ = TeraMath.floorToInt(targetPos.z);
         Vector2i center = new Vector2i(targetBlockX, targetBlockZ);
-        for (BaseVector2i pos : SpiralIterable.clockwise(center).maxRadius(3).scale(2).build()) {
+        for (BaseVector2i pos : SpiralIterable.clockwise(center).maxRadius(32).scale(2).build()) {
 
             Vector3i testPos = new Vector3i(pos.getX(), targetBlockY, pos.getY());
             Vector3i spawnPos = findOpenVerticalPosition(testPos, entityHeight);
             if (spawnPos != null) {
-                return new Vector3f(spawnPos.getX(), spawnPos.getY() + entityHeight, spawnPos.getZ());
+                return Optional.of(new Vector3f(spawnPos.getX(), spawnPos.getY() + entityHeight, spawnPos.getZ()));
             }
         }
-        return null;
+        return Optional.empty();
     }
 
     /**

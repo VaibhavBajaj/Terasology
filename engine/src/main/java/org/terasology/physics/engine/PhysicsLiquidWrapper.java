@@ -51,7 +51,7 @@ public class PhysicsLiquidWrapper implements VoxelPhysicsWorld {
         private Vector3i position;
         private Vector3f offset;
 
-        public LiquidVoxelInfo(Block block, Vector3i position) {
+         LiquidVoxelInfo(Block block, Vector3i position) {
             this.shape = block.getCollisionShape();
             this.offset = block.getCollisionOffset();
             this.colliding = block.isLiquid();
@@ -82,6 +82,18 @@ public class PhysicsLiquidWrapper implements VoxelPhysicsWorld {
         @Override
         public boolean isBlocking() {
             return blocking;
+        }
+
+        @Override
+        public float getFriction() {
+            // TODO Auto-generated method stub
+            return 0;
+        }
+
+        @Override
+        public float getRestitution() {
+            // TODO Auto-generated method stub
+            return 0;
         }
     }
 }

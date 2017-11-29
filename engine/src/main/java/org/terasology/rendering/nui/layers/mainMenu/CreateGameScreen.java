@@ -46,6 +46,7 @@ import org.terasology.rendering.nui.databinding.ReadOnlyBinding;
 import org.terasology.rendering.nui.itemRendering.StringTextRenderer;
 import org.terasology.rendering.nui.layers.mainMenu.savedGames.GameInfo;
 import org.terasology.rendering.nui.layers.mainMenu.savedGames.GameProvider;
+import org.terasology.rendering.nui.layers.mainMenu.selectModulesScreen.SelectModulesScreen;
 import org.terasology.rendering.nui.widgets.UIButton;
 import org.terasology.rendering.nui.widgets.UIDropdown;
 import org.terasology.rendering.nui.widgets.UIDropdownScrollable;
@@ -256,8 +257,8 @@ public class CreateGameScreen extends CoreScreenLayer {
             }
         };
         previewSeed.bindEnabled(worldGeneratorSelected);
+        PreviewWorldScreen screen = getManager().createScreen(PreviewWorldScreen.ASSET_URI, PreviewWorldScreen.class);
         WidgetUtil.trySubscribe(this, "previewSeed", button -> {
-            PreviewWorldScreen screen = getManager().createScreen(PreviewWorldScreen.ASSET_URI, PreviewWorldScreen.class);
             if (screen != null) {
                 screen.bindSeed(BindHelper.bindBeanProperty("text", seed, String.class));
                 try {

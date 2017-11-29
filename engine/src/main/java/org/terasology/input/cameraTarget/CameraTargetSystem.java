@@ -31,6 +31,7 @@ import org.terasology.physics.StandardCollisionGroup;
 import org.terasology.registry.In;
 import org.terasology.rendering.world.WorldRenderer;
 import org.terasology.world.BlockEntityRegistry;
+import org.terasology.world.block.BlockComponent;
 
 import java.math.RoundingMode;
 import java.util.Arrays;
@@ -59,8 +60,9 @@ public class CameraTargetSystem extends BaseComponentSystem {
     private Vector3i targetBlockPos;
     private Vector3f hitPosition = new Vector3f();
     private Vector3f hitNormal = new Vector3f();
-    private CollisionGroup[] filter = {StandardCollisionGroup.DEFAULT, StandardCollisionGroup.WORLD};
+    private CollisionGroup[] filter = {StandardCollisionGroup.DEFAULT, StandardCollisionGroup.WORLD, StandardCollisionGroup.CHARACTER};
     private float focalDistance;
+    private boolean isBlock;
 
     @Override
     public void initialise() {
@@ -128,6 +130,8 @@ public class CameraTargetSystem extends BaseComponentSystem {
             oldTarget.send(new CameraOutEvent());
             newTarget.send(new CameraOverEvent());
             localPlayer.getCharacterEntity().send(new CameraTargetChangedEvent(oldTarget, newTarget));
+            // Set isBlock to false if the hit-entity does not have a BlockComponent
+            isBlock = !(isTargetAvailable() && !newTarget.hasComponent(BlockComponent.class));
         }
         target = newTarget;
         targetBlockPos = newBlockPos;
@@ -186,6 +190,10 @@ public class CameraTargetSystem extends BaseComponentSystem {
      */
     public float getFocalDistance() {
         return focalDistance;
+    }
+
+    public boolean isBlock() {
+        return isBlock;
     }
 }
 

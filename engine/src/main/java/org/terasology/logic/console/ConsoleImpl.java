@@ -1,5 +1,5 @@
 /*
- * Copyright 2013 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,6 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Collections2;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Lists;
-import com.google.common.collect.MapMaker;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import org.slf4j.Logger;
@@ -57,7 +56,7 @@ public class ConsoleImpl implements Console {
     private final CircularBuffer<Message> messageHistory = CircularBuffer.create(MAX_MESSAGE_HISTORY);
     private final CircularBuffer<String> localCommandHistory = CircularBuffer.create(MAX_COMMAND_HISTORY);
     private final Map<Name, ConsoleCommand> commandRegistry = Maps.newHashMap();
-    private final Set<ConsoleSubscriber> messageSubscribers = Sets.newSetFromMap(new MapMaker().weakKeys().<ConsoleSubscriber, Boolean>makeMap());
+    private final Set<ConsoleSubscriber> messageSubscribers = Sets.newHashSet();
 
     private NetworkSystem networkSystem;
     private Context context;
@@ -198,7 +197,9 @@ public class ConsoleImpl implements Console {
         ClientComponent cc = callingClient.getComponent(ClientComponent.class);
 
         if (cc.local) {
-            localCommandHistory.add(rawCommand);
+            if (!rawCommand.isEmpty() && (localCommandHistory.isEmpty() || !localCommandHistory.getLast().equals(rawCommand))) {
+                localCommandHistory.add(rawCommand);
+            }
         }
 
         return execute(new Name(commandName), processedParameters, callingClient);

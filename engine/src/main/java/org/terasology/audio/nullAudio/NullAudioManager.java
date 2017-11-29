@@ -28,7 +28,6 @@ import org.terasology.math.geom.Vector3f;
 
 /**
  * Null implementation of the AudioManager
- *
  */
 public class NullAudioManager implements AudioManager {
     @Override
@@ -108,5 +107,13 @@ public class NullAudioManager implements AudioManager {
     @Override
     public AssetFactory<StreamingSound, StreamingSoundData> getStreamingSoundFactory() {
         return NullStreamingSound::new;
+    }
+
+    @Override
+    public void loopMusic(StreamingSound music) {
+    }
+
+    @Override
+    public void loopMusic(StreamingSound music, float volume) {
     }
 }

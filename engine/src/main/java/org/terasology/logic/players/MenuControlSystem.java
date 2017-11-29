@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,6 @@
 
 package org.terasology.logic.players;
 
-import org.terasology.utilities.Assets;
 import org.terasology.audio.AudioManager;
 import org.terasology.entitySystem.entity.EntityRef;
 import org.terasology.entitySystem.event.ReceiveEvent;
@@ -24,19 +23,22 @@ import org.terasology.entitySystem.systems.BaseComponentSystem;
 import org.terasology.entitySystem.systems.RegisterMode;
 import org.terasology.entitySystem.systems.RegisterSystem;
 import org.terasology.input.ButtonState;
-import org.terasology.input.Keyboard;
 import org.terasology.input.binds.general.OnlinePlayersButton;
 import org.terasology.input.binds.general.PauseButton;
-import org.terasology.input.events.KeyDownEvent;
-import org.terasology.logic.characters.events.DeathEvent;
+import org.terasology.input.binds.general.ScreenshotButton;
+import org.terasology.logic.characters.CharacterComponent;
+import org.terasology.logic.characters.events.PlayerDeathEvent;
 import org.terasology.network.ClientComponent;
 import org.terasology.registry.CoreRegistry;
 import org.terasology.registry.In;
 import org.terasology.rendering.nui.NUIManager;
+import org.terasology.rendering.nui.layers.ingame.DeathScreen;
 import org.terasology.rendering.nui.layers.ingame.OnlinePlayersOverlay;
 import org.terasology.rendering.opengl.ScreenGrabber;
+import org.terasology.utilities.Assets;
 
 /**
+ * This system controls the client's in-game menus (Pause screen, Death screen, HUDs and overlays).
  */
 @RegisterSystem(RegisterMode.CLIENT)
 public class MenuControlSystem extends BaseComponentSystem {
@@ -59,21 +61,23 @@ public class MenuControlSystem extends BaseComponentSystem {
     }
 
     @ReceiveEvent(components = ClientComponent.class)
-    public void onKeyDown(KeyDownEvent event, EntityRef entity) {
-        switch (event.getKey().getId()) {
-            case Keyboard.KeyId.F12:
-                CoreRegistry.get(ScreenGrabber.class).takeScreenshot();
-                CoreRegistry.get(AudioManager.class).playSound(Assets.getSound("engine:camera").get());
-                break;
-            default:
-                break;
+    public void onScreenshotCapture(ScreenshotButton event, EntityRef entity) {
+        if (event.getState() == ButtonState.DOWN) {
+            CoreRegistry.get(ScreenGrabber.class).takeScreenshot();
+            CoreRegistry.get(AudioManager.class).playSound(Assets.getSound("engine:camera").get());
+            event.consume();
         }
     }
 
-    @ReceiveEvent(components = {ClientComponent.class})
-    public void onDeath(DeathEvent event, EntityRef entity) {
-        if (entity.getComponent(ClientComponent.class).local) {
+    @ReceiveEvent(components = {CharacterComponent.class})
+    public void onPlayerDeath(PlayerDeathEvent event, EntityRef character) {
+        EntityRef client = character.getComponent(CharacterComponent.class).controller;
+        if (client.getComponent(ClientComponent.class).local) {
+            nuiManager.removeOverlay("engine:onlinePlayersOverlay");
             nuiManager.pushScreen("engine:deathScreen");
+            if (event.damageTypeName != null) {
+                ((DeathScreen) nuiManager.getScreen("engine:deathScreen")).setDeathDetails(event.instigatorName, event.damageTypeName);
+            }
         }
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,59 +16,81 @@
 package org.terasology.rendering.dag.nodes;
 
 import org.terasology.assets.ResourceUrn;
-import org.terasology.config.Config;
+import org.terasology.context.Context;
+import org.terasology.engine.SimpleUri;
 import org.terasology.monitoring.PerformanceMonitor;
-import org.terasology.registry.In;
+import org.terasology.rendering.assets.material.Material;
 import org.terasology.rendering.dag.AbstractNode;
-import org.terasology.rendering.dag.stateChanges.BindFBO;
+import org.terasology.rendering.dag.stateChanges.BindFbo;
 import org.terasology.rendering.dag.stateChanges.EnableMaterial;
+import org.terasology.rendering.dag.stateChanges.SetInputTextureFromFbo;
 import org.terasology.rendering.dag.stateChanges.SetViewportToSizeOf;
+import org.terasology.rendering.nui.properties.Range;
 import org.terasology.rendering.opengl.FBO;
 import org.terasology.rendering.opengl.FBOConfig;
-import static org.terasology.rendering.opengl.ScalingFactors.FULL_SCALE;
+import org.terasology.rendering.opengl.ScreenGrabber;
 import org.terasology.rendering.opengl.fbms.DisplayResolutionDependentFBOs;
-import org.terasology.rendering.world.WorldRenderer;
-import static org.lwjgl.opengl.GL11.GL_COLOR_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.GL_DEPTH_BUFFER_BIT;
-import static org.lwjgl.opengl.GL11.glClear;
+
+import static org.terasology.rendering.dag.nodes.InitialPostProcessingNode.INITIAL_POST_FBO_URI;
+import static org.terasology.rendering.dag.stateChanges.SetInputTextureFromFbo.FboTexturesTypes.ColorTexture;
 import static org.terasology.rendering.opengl.OpenGLUtils.renderFullscreenQuad;
+import static org.terasology.rendering.opengl.ScalingFactors.FULL_SCALE;
 
 /**
- * TODO: Add diagram of this node
+ * The exposure calculated earlier in the rendering process is used by an instance
+ * of this node to remap the colors of the image rendered so far, brightening otherwise
+ * undetailed dark areas or dimming otherwise burnt bright areas, depending on the circumstances.
+ *
+ * For more details on the specific algorithm used see shader resource toneMapping_frag.glsl.
+ *
+ * This node stores its output in TONE_MAPPED_FBO_URI.
  */
 public class ToneMappingNode extends AbstractNode {
-    public static final ResourceUrn TONE_MAPPED = new ResourceUrn("engine:sceneToneMapped"); // HDR tone mapping
+    public static final SimpleUri TONE_MAPPING_FBO_URI = new SimpleUri("engine:fbo.toneMapping");
+    private static final ResourceUrn TONE_MAPPING_MATERIAL_URN = new ResourceUrn("engine:prog.toneMapping");
 
-    @In
-    private DisplayResolutionDependentFBOs displayResolutionDependentFBOs;
+    private ScreenGrabber screenGrabber;
 
-    @In
-    private WorldRenderer worldRenderer;
+    private Material toneMappingMaterial;
 
-    @In
-    private Config config;
+    @SuppressWarnings("FieldCanBeLocal")
+    @Range(min = 0.0f, max = 10.0f)
+    private float exposureBias = 1.0f;
+    @SuppressWarnings("FieldCanBeLocal")
+    @Range(min = 0.0f, max = 100.0f)
+    private float whitePoint = 9f;
 
-    @Override
-    public void initialise() {
-        requiresFBO(new FBOConfig(TONE_MAPPED, FULL_SCALE, FBO.Type.HDR), displayResolutionDependentFBOs);
+    public ToneMappingNode(Context context) {
+        screenGrabber = context.get(ScreenGrabber.class);
 
-        addDesiredStateChange(new BindFBO(TONE_MAPPED, displayResolutionDependentFBOs));
-        addDesiredStateChange(new EnableMaterial("engine:prog.hdr")); // TODO: rename shader to toneMapping)
-        addDesiredStateChange(new SetViewportToSizeOf(TONE_MAPPED, displayResolutionDependentFBOs));
+        DisplayResolutionDependentFBOs displayResolutionDependentFBOs = context.get(DisplayResolutionDependentFBOs.class);
+        FBO toneMappingFbo = requiresFBO(new FBOConfig(TONE_MAPPING_FBO_URI, FULL_SCALE, FBO.Type.HDR), displayResolutionDependentFBOs);
+        addDesiredStateChange(new BindFbo(toneMappingFbo));
+        addDesiredStateChange(new SetViewportToSizeOf(toneMappingFbo));
+
+        addDesiredStateChange(new EnableMaterial(TONE_MAPPING_MATERIAL_URN));
+
+        toneMappingMaterial = getMaterial(TONE_MAPPING_MATERIAL_URN);
+
+        int textureSlot = 0;
+        addDesiredStateChange(new SetInputTextureFromFbo(textureSlot, INITIAL_POST_FBO_URI, ColorTexture, displayResolutionDependentFBOs, TONE_MAPPING_MATERIAL_URN, "texScene"));
     }
 
     /**
-     * // TODO: write javadoc
+     * Renders a full screen quad with the opengl state defined by the initialise() method,
+     * using the GBUFFER as input and filling the TONE_MAPPED_FBO_URI with the output of
+     * the shader operations. As such, this method performs purely 2D operations.
      */
-    // TODO: Tone mapping usually maps colors from HDR to a more limited range,
-    // TODO: i.e. the 24 bit a monitor can display. This method however maps from an HDR buffer
-    // TODO: to another HDR buffer and this puzzles me. Will need to dig deep in the shader to
-    // TODO: see what it does.
     @Override
     public void process() {
         PerformanceMonitor.startActivity("rendering/toneMapping");
 
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);     // TODO: verify this is necessary
+        // Specific Shader Parameters
+        toneMappingMaterial.setFloat("exposure", screenGrabber.getExposure() * exposureBias, true);
+        toneMappingMaterial.setFloat("whitePoint", whitePoint, true);
+
+        // Actual Node Processing
+
         renderFullscreenQuad();
 
         PerformanceMonitor.endActivity();

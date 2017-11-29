@@ -1,5 +1,5 @@
 /*
- * Copyright 2016 MovingBlocks
+ * Copyright 2017 MovingBlocks
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,30 +15,28 @@
  */
 package org.terasology.rendering.opengl;
 
-import org.terasology.assets.ResourceUrn;
+import org.terasology.engine.SimpleUri;
+import org.terasology.utilities.subscribables.Subscribable;
 
 /**
  * TODO: Add javadocs
  */
-public interface BaseFBOsManager {
-
-    boolean subscribe(FBOManagerSubscriber subscriber);
-
-    boolean unsubscribe(FBOManagerSubscriber subscriber);
-
-    void release(ResourceUrn fboName);
+public interface BaseFBOsManager extends Subscribable {
+    void release(SimpleUri fboName);
 
     FBO request(FBOConfig fboConfig);
 
-    FBO get(ResourceUrn fboName);
+    FBO get(SimpleUri fboName);
 
-    boolean bindFboColorTexture(ResourceUrn fboName);
+    FBOConfig getFboConfig(SimpleUri fboName);
 
-    boolean bindFboDepthTexture(ResourceUrn fboName);
+    boolean bindFboColorTexture(SimpleUri fboName);
 
-    boolean bindFboNormalsTexture(ResourceUrn fboName);
+    boolean bindFboDepthTexture(SimpleUri fboName);
 
-    boolean bindFboLightBufferTexture(ResourceUrn fboName);
+    boolean bindFboNormalsTexture(SimpleUri fboName);
+
+    boolean bindFboLightBufferTexture(SimpleUri fboName);
 
     // TODO: move all these bindings in their own StateChange implementations.
     // TODO: i.e. BindFBOColorBuffer, BindFBODepthBuffer and so on.
